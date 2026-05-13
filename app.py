@@ -1,12 +1,18 @@
 import streamlit as st
 import pickle
 import requests
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 st.set_page_config(page_title="Netflix AI", layout="wide")
 
 # Load data
 movies = pickle.load(open('movies.pkl','rb'))
-similarity = pickle.load(open('similarity.pkl','rb'))
+
+# 🔥 REBUILD MODEL INSIDE APP (NO similarity.pkl NEEDED)
+cv = CountVectorizer(max_features=5000, stop_words='english')
+vectors = cv.fit_transform(movies['tags']).toarray()
+similarity = cosine_similarity(vectors)
 
 # TMDB poster fetch
 def fetch_poster(title):
@@ -22,6 +28,7 @@ def fetch_poster(title):
         return "https://image.tmdb.org/t/p/w500" + poster
 
     return "https://via.placeholder.com/300x450"
+
 
 # Recommendation function
 def recommend(movie):
@@ -56,7 +63,7 @@ cols = st.columns(6)
 
 selected_movie = None
 
-for i in range(18):  # show first 18 movies as homepage
+for i in range(18):
     with cols[i % 6]:
         title = movies.iloc[i].title
         poster = fetch_poster(title)
