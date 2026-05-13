@@ -16,19 +16,29 @@ similarity = cosine_similarity(vectors)
 
 # TMDB poster fetch
 def fetch_poster(title):
-    url = "https://api.themoviedb.org/3/search/movie"
-    params = {
-        "api_key": "YOUR_API_KEY",
-        "query": title
-    }
-    data = requests.get(url, params=params).json()
+    try:
+        url = "https://api.themoviedb.org/3/search/movie"
+        params = {
+            "api_key": "0b729b5ddc03c63ac4e22345966c00f0",
+            "query": title
+        }
 
-    if data.get("results"):
-        poster = data["results"][0]["poster_path"]
-        return "https://image.tmdb.org/t/p/w500" + poster
+        response = requests.get(url, params=params)
+        data = response.json()
 
-    return "https://via.placeholder.com/300x450"
+        # check if results exist
+        if data.get("results") and len(data["results"]) > 0:
 
+            poster_path = data["results"][0].get("poster_path")
+
+            if poster_path:
+                return "https://image.tmdb.org/t/p/w500" + poster_path
+
+    except:
+        pass
+
+    # fallback image (VERY IMPORTANT)
+    return "https://via.placeholder.com/300x450?text=No+Image"
 
 # Recommendation function
 def recommend(movie):
