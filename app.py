@@ -4,10 +4,10 @@ import requests
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# ---------------- PAGE ---------------- #
-st.set_page_config(page_title="Netflix CLONE", layout="wide")
+# ---------------- PAGE CONFIG ---------------- #
+st.set_page_config(page_title="Netflix AI Recommender", layout="wide")
 
-# ---------------- NETFLIX CSS ---------------- #
+# ---------------- NETFLIX UI ---------------- #
 st.markdown("""
 <style>
 .stApp {
@@ -18,73 +18,77 @@ st.markdown("""
 /* Title */
 h1 {
     text-align: center;
-    color: #E50914;
+    color: #E50914 !important;
     font-size: 55px;
     font-weight: 900;
 }
 
-/* Netflix row style */
-.row {
-    display: flex;
-    overflow-x: auto;
-    padding: 10px 0px;
+/* Subheaders */
+h2, h3 {
+    color: #E50914 !important;
 }
 
-.movie {
-    min-width: 160px;
-    margin-right: 12px;
-    transition: transform 0.3s, box-shadow 0.3s;
+/* Buttons */
+.stButton > button {
+    background-color: transparent;
+    color: #E50914;
+    border: 1px solid #E50914;
+    border-radius: 8px;
+    width: 100%;
+    transition: 0.3s;
 }
 
-.movie:hover {
-    transform: scale(1.1);
-    box-shadow: 0px 0px 15px #E50914;
+.stButton > button:hover {
+    background-color: #E50914;
+    color: white;
+    transform: scale(1.03);
 }
 
-/* scrollbar hide */
-.row::-webkit-scrollbar {
-    display: none;
+/* remove padding clutter */
+.block-container {
+    padding: 2rem 3rem;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- TITLE ---------------- #
-st.markdown("<h1>NETFLIX AI CLONE</h1>", unsafe_allow_html=True)
+# ---------------- HEADER ---------------- #
+st.markdown("<h1>NETFLIX AI RECOMMENDER</h1>", unsafe_allow_html=True)
 
-# ---------------- DATA ---------------- #
+# ---------------- LOAD DATA ---------------- #
 movies = pickle.load(open('movies.pkl','rb'))
 
+# ---------------- BUILD MODEL (NO similarity.pkl) ---------------- #
 cv = CountVectorizer(max_features=5000, stop_words='english')
 vectors = cv.fit_transform(movies['tags']).toarray()
 similarity = cosine_similarity(vectors)
 
-# ---------------- TMDB ---------------- #
+# ---------------- POSTER FUNCTION ---------------- #
 def fetch_poster(title):
-    url = "https://api.themoviedb.org/3/search/movie"
-    params = {
-        "api_key": "YOUR_API_KEY",
-        "query": title
-    }
-
     try:
-        data = requests.get(url, params=params).json()
+        url = "https://api.themoviedb.org/3/search/movie"
+        params = {
+            "api_key": "0b729b5ddc03c63ac4e22345966c00f0",   # 🔴 PUT YOUR TMDB KEY HERE
+            "query": title
+        }
 
-        if data.get("results"):
-            poster = data["results"][0]["poster_path"]
-            rating = data["results"][0].get("vote_average", "N/A")
-            genre = data["results"][0].get("genre_ids", [])
+        response = requests.get(url, params=params, timeout=5)
+        data = response.json()
 
-            return (
-                "https://image.tmdb.org/t/p/w500" + poster,
-                rating
-            )
+        results = data.get("results")
+
+        if results and len(results) > 0:
+            poster_path = results[0].get("poster_path")
+
+            if poster_path:
+                return "https://image.tmdb.org/t/p/w500" + poster_path
+
     except:
         pass
 
-    return "https://via.placeholder.com/300x450", "N/A"
+    return "https://via.placeholder.com/300x450?text=No+Image"
 
 
-# ---------------- RECOMMEND ---------------- #
+# ---------------- RECOMMEND FUNCTION ---------------- #
 def recommend(movie):
     index = movies[movies['title'] == movie].index[0]
     distances = similarity[index]
@@ -93,54 +97,42 @@ def recommend(movie):
 
     names = []
     posters = []
-    ratings = []
 
     for i in movie_list:
         title = movies.iloc[i[0]].title
-        p, r = fetch_poster(title)
-
         names.append(title)
-        posters.append(p)
-        ratings.append(r)
+        posters.append(fetch_poster(title))
 
-    return names, posters, ratings
+    return names, posters
 
 
-# ---------------- SEARCH BAR ---------------- #
-selected_movie = st.text_input("🔍 Search a movie")
+# ---------------- SEARCH ---------------- #
+movie_list = movies['title'].values
+selected_movie = st.selectbox("🔍 Search a movie", movie_list)
 
-if selected_movie:
+if st.button("Show Recommendations"):
+    names, posters = recommend(selected_movie)
+
     st.markdown("---")
-    st.markdown(f"## Results for: {selected_movie}")
+    st.markdown(f"## 🎯 Because you watched: {selected_movie}")
 
-    names, posters, ratings = recommend(selected_movie)
-
-    st.markdown('<div class="row">', unsafe_allow_html=True)
+    cols = st.columns(5)
 
     for i in range(len(names)):
-        st.markdown(f"""
-        <div class="movie">
-            <img src="{posters[i]}" width="160">
-            <p style="color:white;margin:5px 0;">{names[i]}</p>
-            <p style="color:gray;">⭐ {ratings[i]}</p>
-            <a href="https://www.youtube.com/results?search_query={names[i]}+trailer" target="_blank">
-            🎬 Trailer
-            </a>
-        </div>
-        """, unsafe_allow_html=True)
+        with cols[i % 5]:
+            st.image(posters[i], use_container_width=True)
+            st.caption(names[i])
 
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# ---------------- NETFLIX ROWS (HOME PAGE) ---------------- #
-st.markdown("## 🔥 Trending Now")
+# ---------------- HOME GRID ---------------- #
+st.markdown("---")
+st.markdown("## 🔥 Trending Movies")
 
 cols = st.columns(6)
 
 for i in range(18):
     title = movies.iloc[i].title
-    poster, rating = fetch_poster(title)
+    poster = fetch_poster(title)
 
     with cols[i % 6]:
         st.image(poster, use_container_width=True)
         st.caption(title)
-        st.caption(f"⭐ {rating}")
