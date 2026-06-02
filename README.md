@@ -3,7 +3,7 @@
 Live Demo
 
 Try the live application here:
-https://nutrition-tracker-lhtduhmammvysfqqbk9ysj.streamlit.app/
+https://movie-recommender-22dchrzerduvs5ydpcnecn.streamlit.app/
 
 The app is fully deployed using Streamlit Cloud and works in real time.
 
